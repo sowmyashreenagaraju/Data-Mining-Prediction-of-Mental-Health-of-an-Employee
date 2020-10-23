@@ -1,0 +1,928 @@
+---
+title: "Mental Health Survey"
+author: "Sowmya Shree Nagaraju"
+date: "4/17/2020"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+
+
+```{r pressure, echo=FALSE}
+library(dplyr)
+library(ggplot2)
+library(readxl)
+library(tidyverse)
+library(ggforce)
+library(ggrepel)
+library(gridExtra)
+library(class)
+library(gmodels)
+library(caTools)
+library(neuralnet)
+library(stats)
+library(base)
+
+
+```
+
+
+```{r}
+df<-read.csv("Data.csv")
+df<-df[,-1]
+```
+
+```{r}
+#----------------------------------------------------------------------------------#
+# Data Cleaning
+#----------------------------------------------------------------------------------#
+
+# Column: Are you Self Employed? 
+df[which(df[,2] == "0"),2]<-"No"
+df[which(df[,2] == "1"),2]<-"Yes"
+
+# Column: Is your employer tech company?
+df[which(df[,4] == "0"),4]<-"No"
+df[which(df[,4] == "1"),4]<-"Yes"
+
+# Column:Is your primary role in the company related to tech/IT?
+df[which(df[,5] == "0"),5]<-"No"
+df[which(df[,5] == "1"),5]<-"Yes"
+
+
+# Column: How many Employees does your company have?
+levels(df$EmployeeCount)
+levels(df$EmployeeCount)[1]<-"1-5"
+levels(df$EmployeeCount)[3]<-"100-500"
+levels(df$EmployeeCount)[4]<-"26-100"
+levels(df$EmployeeCount)[5]<-"6-25"
+levels(df$EmployeeCount)[7]<-"More than 1000"
+
+
+# Column: Self employed?
+df$SelfEmployed<-factor(df$SelfEmployed)
+
+# Column: Is your employer Tech company?
+df$TechCompany<-factor(df$TechCompany)
+
+# Column: Is your primary role in your company is tech related?
+df$PrimeRoleInTech<-factor(df$PrimeRoleInTech)
+
+# Column: Requesting for leave 
+
+levels(df$RequestingMedicalLeave)[7]<-"Difficult"
+
+# Column: Discussing with supervisor
+
+levels(df$ComfortDiscussingMentalHealthWithSupervisor)[1]<-"NA"
+
+# Column: Local or online resource
+
+levels(df$LocalOrOnlineResources)[1]<-"NA"
+
+
+# Column: Previous employers
+
+df[which(df[,22] == "0"),22]<-"No"
+df[which(df[,22] == "1"),22]<-"Yes"
+
+# Column: Awareness of Mental health Benefits
+levels(df$AwarenessOfMHealthBenefitsPE)[1]<-"No"
+levels(df$AwarenessOfMHealthBenefitsPE)[2]<-"Yes"
+
+# Column: Did your previous employer formally discuss Mental health benifits
+levels(df$DiscussionPE)[2]<-"No"
+levels(df$DiscussionPE)[3]<-"Yes"
+
+# Column: Negative Impact from client
+df[which(df[,17] == "No, because it would impact me negatively"),17]<-"Yes"
+
+# Column: Previous Employer
+df$PreviousEmployers<-factor(df$PreviousEmployers)
+
+
+# Column: Previous Health Benefits
+levels(df$PreviousMentalHealthBenefits)[2]<-"No"
+levels(df$PreviousMentalHealthBenefits)[3]<-"Yes"
+
+
+# Column: Anonimity Protected by Previous employer
+levels(df$AnonymityProtectedPE)[2]<-"No"
+levels(df$AnonymityProtectedPE)[3]<-"Yes"
+
+# Column: Comfort discussing with previous employers supervisor
+levels(df$ComfortDiscussingMentalHealthWithSupervisorPE)[2]<-"No"
+levels(df$ComfortDiscussingMentalHealthWithSupervisorPE)[3]<-"Yes"
+
+# Column: Do you have Medical coverage(Private)
+
+levels(df$MedicalCoverage)[1]<-"No"
+levels(df$MedicalCoverage)[2]<-"Yes"
+
+
+# Column: If you have revealed a mental health issue to a client or 
+#         business contact, do you believe this has impacted you negatively?
+
+levels(df$NegativeImpactFromClients)[5]<-"Yes"
+
+
+
+# Column: Did your previous employers provide resources to learn more 
+#         about mental health issues and how to seek help?
+
+levels(df$ResourcesPE)[1]<-"No"
+levels(df$ResourcesPE)[2]<-"Yes"
+
+
+
+# Column: Gender
+df$Gender<-tolower(df$Gender)
+df[which(df$Gender %in% c("male","male","man","cis male","male.","male 9:1 female, roughly","male (cis)","nb masculine",
+                                  "sex is male","malr","mtf","dude",
+                                  "mail","m|","male/genderqueer","male (trans, ftm)","cisdude","cis man","cis-male",
+                                  "male/androgynous","cis hetero male","m",
+                                  "male, cis","cis male","male-ish","ostensibly male",
+                                  "malel","cisgender male","identify as male",
+                                  "masculine","cishet male","masculino","make")),39]<-"Male"
+
+
+df[which(df$Gender %in% c("female","female ","cis female "," female","femalw","femail",
+                                "female (cisgender)","female (cis)","cis-female","cis female","cis woman",
+                                "femile")),39]<-"Female"
+
+df[!(df$Gender=="Male"|df$Gender=="Female"),39]<-"Trans"
+df$Gender<-factor(df$Gender)
+
+# Age
+# Max age is 323, min age is 3.
+# There are only 5 people that have weird ages (3yo, 15yo, or 99yo or 323 yo.) 
+# These people will take the average age of the dataset (the correct calculated one, w/out outliers)
+
+df_age<-df[which(df$Age >= 18 & df$Age<= 75),38]
+age<-mean(df_age)
+age<-round(age,digits = 0)
+df[(which(df$Age < 18 | df$Age > 75 | is.na(df$Age))),38]<-age
+
+
+
+# Column: Negative impact from client
+
+levels(df$NegativeImpactFromClients)[4]<-"Yes"
+levels(df$NegativeImpactFromClients)[6]<-"No"
+levels(df$NegativeImpactFromClients)[7]<-"No"
+
+
+# Column: Negative response from colleagues
+
+levels(df$NegativeResponseFromCollegues)[3]<-"Yes"
+levels(df$NegativeResponseFromCollegues)[7]<-"No"
+levels(df$NegativeResponseFromCollegues)[5]<-"No"
+
+# Column: Comfort discussing with coworker
+
+levels(df$ComfortDiscussingMentalHealthWithCoworkers)[3]<-"Yes"
+levels(df$ComfortDiscussingMentalHealthWithCoworkers)[5]<-"No"
+levels(df$ComfortDiscussingMentalHealthWithCoworkers)[6]<-"Yes"
+
+# Column: awareness of Mental Health Benefits
+df$AwarenessOfMHealthBenefitsPE<-factor(df$AwarenessOfMHealthBenefitsPE)
+levels(df$AwarenessOfMHealthBenefitsPE)[1]<-"No"
+levels(df$AwarenessOfMHealthBenefitsPE)[2]<-"Yes"
+
+
+# Column: Resource provided by Previous employer
+df$ResourcesPE<-factor(df$ResourcesPE)
+levels(df$ResourcesPE)[1]<-"No"
+levels(df$ResourcesPE)[2]<-"Yes"
+
+# Column: Comfort discussing with previous coworker
+df$ComfortDiscussingMentalHealthWithCoworkersPE<-
+  factor(df$ComfortDiscussingMentalHealthWithCoworkersPE)
+levels(df$ComfortDiscussingMentalHealthWithCoworkersPE)[1]<-"No"
+levels(df$ComfortDiscussingMentalHealthWithCoworkersPE)[2]<-"Yes"
+
+# Column: Negative impact on Career
+df$NegativeImpactOfIssuesOnCareer<-factor(df$NegativeImpactOfIssuesOnCareer)
+levels(df$NegativeImpactOfIssuesOnCareer)[1]<-"No"
+levels(df$NegativeImpactOfIssuesOnCareer)[2]<-"Yes"
+
+
+# Column: Observed or experienced bad response from previous employer
+levels(df$ObservedOrExperiencedBadResponseCEPE)[2]<-"No"
+levels(df$ObservedOrExperiencedBadResponseCEPE)[3]<-"Yes"
+levels(df$ObservedOrExperiencedBadResponseCEPE)[1]<-"No"
+levels(df$ObservedOrExperiencedBadResponseCEPE)[4]<-"No"
+levels(df$ObservedOrExperiencedBadResponseCEPE)
+summary(df$ObservedOrExperiencedBadResponseCEPE)
+
+# Column: family history
+df$FamilyHistory<-factor(df$FamilyHistory)
+levels(df$FamilyHistory)[1]<-"No"
+levels(df$FamilyHistory)[2]<-"Yes"
+
+# Column: Diagnosis
+df$Diagnosis<-factor(df$Diagnosis)
+levels(df$Diagnosis)[1]<-"No"
+levels(df$Diagnosis)[2]<-"Yes"
+
+levels(df$MentalHealthDisorder)
+levels(df$MentalHealthDisorder)[1] <- "No"
+summary(df$MentalHealthDisorder)
+
+levels(df$MentalHealthBenefits)
+
+rm(age,df_age)
+
+
+#----------------------------------
+# After cleaning the data
+
+head(df)
+summary(df)
+
+dfCopy <- df
+
+write.csv(df,'DataUpdated.csv')
+
+```
+
+
+```{r}
+df <- read.csv("DataUpdated.csv")
+dfCopy <- df
+```
+
+
+```{r}
+# Visualization
+df1<-df%>%group_by(df$SelfEmployed,df$TechCompany)%>%
+          dplyr::summarise(count = n())
+colnames(df1)<-c("Self_employed","TechCompany","count")
+ggplot(df1, aes(x=Self_employed, y=count, fill=TechCompany)) + 
+  geom_bar(position = "stack",stat = "identity",width = 0.5) +
+  labs(x="Self Employed", y="Number of Sefl employed people",title ="Overview of Self employed and Tech Company data") +
+  theme_light()+theme(plot.title = element_text(family="Times New Roman", 
+                                                face="bold.italic",color="black",size=14),
+                      text = element_text(family="Times New Roman", 
+                                          face="bold.italic",color="black",size=10),
+                      legend.key.size = unit(0.3, "cm"),
+                      legend.position = "top") +
+  geom_text(aes(label = df1$count), vjust = 0.4, position = position_stack(vjust = 0.5))
+
+
+ggsave("TechCompany.png", device="png", dpi = 1000)
+```
+
+
+```{r}
+# Number of Respondents by Country and Tech flag
+df1<-df%>%group_by(WorkCountry,TechCompany)%>%
+          dplyr::summarise(count=n())%>%arrange(desc(count))
+df1<-df1[1:8,]
+df1$WorkCountry<-as.character(df1$WorkCountry)
+df1[which(df1$WorkCountry =="United States of America"),1]<-"USA"
+df1[which(df1$WorkCountry =="United Kingdom"),1]<-"UK"
+
+ggplot(df1, aes(x=reorder(WorkCountry,-count), y=count, fill=TechCompany)) + 
+  geom_bar(position = "dodge",stat = "identity",width = 0.5) +
+  labs(x="Country", y="Count",title ="Number of Respondents by Country and Tech flag ") +
+  theme_light()+theme(plot.title = element_text(family="Times New Roman", 
+                                                face="bold.italic",color="black",size=14),
+                      text = element_text(family="Times New Roman", 
+                                          face="bold.italic",color="black",size=10),
+                      legend.key.size = unit(0.3, "cm"),
+                      legend.position = "top")
+ggsave("NoResbyCountry.png", device="png", dpi = 1000)
+```
+
+```{r}
+# Number of Respondents by Company size and tech flag
+
+df1<-df%>%group_by(EmployeeCount,TechCompany)%>%
+  dplyr::summarise(count=n())%>%arrange(desc(count))
+
+
+ggplot(df1, aes(x=EmployeeCount, y=count, fill=TechCompany)) + 
+  geom_bar(position = "dodge",stat = "identity",width = 0.5) +
+  labs(x="Company size", y="Count",title ="Number of Respondents by Company size and tech flag") +
+  theme_light()+theme(plot.title = element_text(family="Times New Roman", 
+                                                face="bold.italic",color="black",size=14),
+                      text = element_text(family="Times New Roman", 
+                                          face="bold.italic",color="black",size=10),
+                      legend.key.size = unit(0.3, "cm"),
+                      legend.position = "top")
+ggsave("NoResbyCompanysize.png", device="png", dpi = 1000)
+```
+
+
+```{r}
+# Gender (only Tech)
+
+df1<-df%>%group_by(WorkCountry,Gender)%>%
+  dplyr::summarise(count=n())%>%arrange(desc(count))
+
+df1$WorkCountry<-as.character(df1$WorkCountry)
+df1[which(df1$WorkCountry =="United States of America"),1]<-"USA"
+df1[which(df1$WorkCountry =="United Kingdom"),1]<-"UK"
+df1<-df1[which(df1$WorkCountry=="USA"|df1$WorkCountry=="UK"|
+                df1$WorkCountry=="Canada"|df1$WorkCountry=="Germany"|
+                 df1$WorkCountry=="Netherlands"|df1$WorkCountry=="Australia"),]
+
+
+
+ggplot(df1, aes(x=reorder(WorkCountry,-count), y=count, fill=Gender)) + 
+  geom_bar(position = "dodge",stat = "identity",width = 0.5) +
+  labs(x="Country", y="Count",title ="Gender by Country") +
+  theme_light()+theme(plot.title = element_text(family="Times New Roman", 
+                                                face="bold.italic",color="black",size=14),
+                      text = element_text(family="Times New Roman", 
+                                          face="bold.italic",color="black",size=10),
+                      legend.key.size = unit(0.3, "cm"),
+                      legend.position = "top")
+ggsave("NoResbyCompanysize.png", device="png", dpi = 1000)
+
+```
+
+
+```{r}
+# Overall gender prop pie chart
+
+df1<-df%>%group_by(Gender)%>%
+          dplyr::summarise(count=n())
+
+df2<-df1%>%mutate(Group = factor(Gender, levels = c("Male", "Female", "Trans")),
+           cumulative = cumsum(count),
+           midpoint = cumulative - count / 2,
+           label = paste0(Gender, " ", round(count / sum(count) * 100, 1), "%"),1)
+
+ggplot(df2, aes(x = 1, weight = count, fill = Gender)) +
+  geom_bar(width = 1, position = "stack") +
+  coord_polar(theta = "y") +
+  geom_text(aes(y = midpoint, label = label))+
+  theme_void()
+
+ggsave("Genderratio.png", device="png", dpi = 1000)
+
+```
+
+```{r}
+# Mental health disorder current
+
+df1<-df%>%group_by(WorkCountry,MentalHealthDisorder)%>%
+          dplyr::summarise(count=n())%>%arrange(desc(count))%>%drop_na()
+
+df1$WorkCountry<-as.character(df1$WorkCountry)
+df1[which(df1$WorkCountry =="United States of America"),1]<-"USA"
+df1[which(df1$WorkCountry =="United Kingdom"),1]<-"UK"
+df1<-df1[which(df1$WorkCountry=="USA"|df1$WorkCountry=="UK"|
+                 df1$WorkCountry=="Canada"|df1$WorkCountry=="Germany"|
+                 df1$WorkCountry=="Netherlands"|df1$WorkCountry=="Australia"),]
+
+par(mfrow=c(1,2))
+
+# Bar graph
+ggplot(df1, aes(x=reorder(WorkCountry,-count), y=count, fill=MentalHealthDisorder)) + 
+  geom_bar(position = "dodge",stat = "identity",width = 0.5) +
+  labs(x="Country", y="Count",title ="Mental Health Disorder by Country") +
+  theme_light()+theme(plot.title = element_text(family="Times New Roman", 
+                                                face="bold.italic",color="black",size=14),
+                      text = element_text(family="Times New Roman", 
+                                          face="bold.italic",color="black",size=10),
+                      legend.key.size = unit(0.3, "cm"),
+                      legend.position = "top")
+ggsave("MentalHealthDisorder.png", device="png", dpi = 1000)
+```
+
+
+```{r}
+# Pie chart to show the mental health history disorder ratio
+
+df1<-df%>%group_by(PersonalHistory)%>%
+  summarise(count=n())
+df2<-df1%>%mutate(Group = factor(PersonalHistory, levels = c("Yes", "No", "Don't Know")),
+                  cumulative = cumsum(count),
+                  midpoint = cumulative - count / 2,
+                  label = paste0(PersonalHistory, " ", round(count / sum(count) * 100), "%"),1)
+df2<-df2%>%drop_na()
+ggplot(df2, aes(x = 1, weight = count, fill = PersonalHistory)) +
+  geom_bar(width = 1, position = "stack") +
+  coord_polar(theta = "y") +
+  geom_text(aes(y = midpoint, label = label),position = position_stack(vjust = 0.5))+
+  theme_void()+theme(legend.position = "bottom",
+                     legend.key.size = unit(0.3, "cm"),
+                     text = element_text(family="Times New Roman", 
+                                         face="bold.italic",color="black",size=10))
+
+
+ggsave("Mentalhealthhistory.png", device="png", dpi = 1000)
+```
+
+```{r}
+# Does your employer provide mental health benefits as part of healthcare coverage?
+
+
+df1<-df%>%group_by(EmployeeCount,MentalHealthBenefits)%>%
+  summarise(count=n())
+
+ggplot(df1, aes(x=reorder(EmployeeCount,-count), y=count, fill=MentalHealthBenefits)) + 
+  geom_bar(position = "dodge",stat = "identity",width = 0.5) +
+  labs(x="Country", y="Count",title ="Ratio of Employers who provide Mental Health Benefits") +
+  theme_light()+theme(plot.title = element_text(family="Times New Roman", 
+                                                face="bold.italic",color="black",size=14),
+                      text = element_text(family="Times New Roman", 
+                                          face="bold.italic",color="black",size=10),
+                      legend.key.size = unit(0.3, "cm"),
+                      legend.position = "top")
+ggsave("Mentalhealthbenefits.png", device="png", dpi = 1000)
+```
+
+
+```{r}
+# Does your employer offer resources to learn more about mental health concerns and options for seeking help?
+
+df1<-df%>%group_by(ResourcesAvailable)%>%
+  summarise(count=n())
+df2<-df1%>%mutate(Group = factor(ResourcesAvailable, levels = c("Yes", "No", "Don't Know")),
+                  cumulative = cumsum(count),
+                  midpoint = cumulative - count / 2,
+                  label = paste0(ResourcesAvailable, " ", round(count / 3000 * 100), "%"),1)
+ggplot(df2, aes(x = 1, weight = count, fill = ResourcesAvailable)) +
+  geom_bar(width = 1, position = "stack") +
+  coord_polar(theta = "y") +
+  geom_text(aes(y = midpoint, label = label))+
+  theme_void()+ labs(title = "Mental Health Resources Provided")+
+  theme(legend.position = "right",
+        legend.key.size = unit(0.5, "cm"),
+        text = element_text(family="Times New Roman", 
+                            face="bold.italic",color="black",size=12))
+
+```
+
+```{r}
+#--------------------------------------------------------------------------------------------#
+#           Data Preparation
+#--------------------------------------------------------------------------------------------#
+
+df<-filter(df,df$TechCompany == "Yes")
+levels(df$MentalHealthDisorder)
+levels(df$MentalHealthDisorder)[1] <- 0
+levels(df$MentalHealthDisorder)[2] <- 1
+levels(df$FamilyHistory)
+levels(df$FamilyHistory)[1] <- 0
+levels(df$FamilyHistory)[2] <- 1
+
+MentalHealth<-df[,c("Age","Gender","FamilyHistory","MentalHealthBenefits","OptionsAvailable",
+                    "AnonymityProtected","RequestingMedicalLeave","InterferenceWithWorkEnv",
+                    "PersonalHistory","MentalHealthDisorder")]
+# Finding the missing values
+sapply(MentalHealth, function(x) sum(is.na(x)))
+# Deleting the missing values
+MentalHealth <- MentalHealth[!is.na(MentalHealth$InterferenceWithWorkEnv),]
+
+
+summary(MentalHealth)
+MentalHealth1<-MentalHealth[,-3]
+must_convert<-sapply(MentalHealth1[,-9],is.factor)  # logical vector telling if a variable needs to be displayed as numeric
+M2<-sapply(MentalHealth1[,must_convert],unclass)    # data.frame of all categorical variables now displayed as numeric
+out<-cbind(MentalHealth1[,!must_convert],M2)        # complete data.frame with all variables put together
+str(out)
+out <- data.frame(out)
+out$FamilyHistory<-MentalHealth$FamilyHistory
+
+```
+
+
+```{r}
+# Corelation Matrix
+must_convert<-sapply(MentalHealth,is.factor)       # logical vector telling if a variable needs to be displayed as numeric
+M2<-sapply(MentalHealth[,must_convert],unclass)    # data.frame of all categorical variables now displayed as numeric
+out<-cbind(MentalHealth[,!must_convert],M2)        # complete data.frame with all variables put together
+
+str(out)
+out <- data.frame(out)
+colnames(out)[1] <-"Age"
+cormat <- round(cor(out),2)
+head(cormat)
+library(reshape2)
+
+# Get lower triangle of the correlation matrix
+get_lower_tri<-function(cormat){
+  cormat[upper.tri(cormat)] <- NA
+  return(cormat)
+}
+# Get upper triangle of the correlation matrix
+get_upper_tri <- function(cormat){
+  cormat[lower.tri(cormat)]<- NA
+  return(cormat)
+}
+
+upper_tri <- get_upper_tri(cormat)
+upper_tri
+
+melted_cormat <- melt(upper_tri, na.rm = TRUE)
+# Heatmap
+ggplot(melted_cormat, aes(Var2, Var1, fill = value))+
+  geom_tile(color = "white")+
+  scale_fill_gradient2(low = "plum2", high = "darkmagenta", mid = "white", 
+                       midpoint = 0, limit = c(-1,1), space = "Lab", 
+                       name="Correlation") +
+  theme_minimal()+ # minimal theme
+  theme(axis.text.x = element_text(angle = 90, vjust = 1, 
+                                   size = 9, hjust = 1))+
+  coord_fixed()
+
+
+ggsave("correlation.png", device="png", dpi = 1000)
+
+```
+
+
+```{r}
+#--------------------------------------------------------------------------------------------#
+#     Data Modeling
+#--------------------------------------------------------------------------------------------#
+# KNN Method
+
+library(fastDummies)
+MentalHealth1 <- fastDummies::dummy_cols(out, select_columns = c("Gender","MentalHealthBenefits","OptionsAvailable",
+                        "AnonymityProtected","RequestingMedicalLeave","InterferenceWithWorkEnv","PersonalHistory"))
+
+MentalHealth<-MentalHealth1[,-c(3:9)]
+#Dividing dataset into train(60%) and test(40%)
+
+library(caTools)
+set.seed(125)
+sample <- sample.split(MentalHealth, SplitRatio = 0.60)
+train <- subset(MentalHealth, sample == TRUE)
+test <- subset(MentalHealth, sample == FALSE)
+MentalHealth_train<-train[,-2]
+MentalHealth_test<-test[,-2]
+train.def<-train$MentalHealthDisorder
+test.def<-test$MentalHealthDisorder
+#For k=1
+knn_pred.result1 <- knn(MentalHealth_train, MentalHealth_test, train.def, k=1 )
+table(knn_pred.result1, test.def)
+misClassificError <- mean(knn_pred.result1 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+#For k=2
+knn_pred.result2 <- knn(MentalHealth_train, MentalHealth_test, train.def, k=2 )
+table(knn_pred.result2, test.def)
+misClassificError <- mean(knn_pred.result2 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+#For k=3
+knn_pred.result3 <- knn(MentalHealth_train, MentalHealth_test, train.def, k=3 )
+table(knn_pred.result3, test.def)
+misClassificError <- mean(knn_pred.result3 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+#For k=4
+knn_pred.result4 <- knn(MentalHealth_train, MentalHealth_test, train.def, k=4 )
+table(knn_pred.result4, test.def)
+misClassificError <- mean(knn_pred.result4 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+#For k=5
+knn_pred.result5 <- knn(MentalHealth_train, MentalHealth_test, train.def, k=5 )
+table(knn_pred.result5, test.def)
+misClassificError <- mean(knn_pred.result5 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+#For k=6
+knn_pred.result6 <- knn(MentalHealth_train, MentalHealth_test, train.def, k=6 )
+table(knn_pred.result6, test.def)
+misClassificError <- mean(knn_pred.result6 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+#For k=7
+knn_pred.result7 <- knn(MentalHealth_train, MentalHealth_test, train.def, k=7 )
+table(knn_pred.result7, test.def)
+misClassificError <- mean(knn_pred.result7 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+#For k=8
+knn_pred.result8 <- knn(MentalHealth_train, MentalHealth_test, train.def, k=8 )
+table(knn_pred.result8, test.def)
+misClassificError <- mean(knn_pred.result8 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+#For k=9
+knn_pred.result9 <- knn(MentalHealth_train, MentalHealth_test, train.def, k=9 )
+table(knn_pred.result9, test.def)
+misClassificError <- mean(knn_pred.result9 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+#For k=10
+knn_pred.result10 <- knn(MentalHealth_train, MentalHealth_test, train.def, k=10 )
+table(knn_pred.result10, test.def)
+misClassificError <- mean(knn_pred.result10 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+
+# We get the highest accuracy at k= 3 with accuracy of 87.62%
+
+```
+
+
+```{r}
+#---------------------------------------------------------------------------------------
+# Decision Tree CANCELLED
+
+library(rpart)
+library(rpart.plot)
+
+CT_model1 <- rpart(MentalHealthDisorder ~ ., data = train, method = 'class')
+printcp(CT_model1)
+rpart.plot(CT_model1, type = 1, extra = 1, split.font = 1, varlen = -10)
+summary(CT_model1)
+
+CT_pred.result1 <-predict(CT_model1, test, type = 'class')
+
+table(CT_pred.result1, test.def)
+misClassificError <- mean(CT_pred.result1 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+# Considering all predictors, we got model accuracy 80.49%
+# Let's consider predictors with importance more than 10.
+
+CT_model2 <- rpart(MentalHealthDisorder ~ PersonalHistory_2 + PersonalHistory_3 + InterferenceWithWorkEnv_1,
+                   data = train, method = 'class')
+printcp(CT_model2)
+rpart.plot(CT_model2, type = 1, extra = 1, split.font = 1, varlen = -10)
+summary(CT_model2)
+
+CT_pred.result2 <-predict(CT_model2, test, type = 'class')
+
+table(CT_pred.result2, test.def)
+misClassificError <- mean(CT_pred.result2 != test.def)
+print(paste('Accuracy', 1-misClassificError))
+
+# Accuracy didnt improve after removing non important variables
+
+#---------------------------------------------------------------------------------------
+```
+
+
+```{r}
+#Multiple Linear Regression Model CANCELLED
+str(out)
+library(car)
+RegModel <- lm(V1 ~ MentalHealthDisorder + AnonymityProtected + PersonalHistory ,data = out)
+summary(RegModel)
+par(mfrow=c(2,2))
+plot(RegModel)
+
+#The Normal QQ plot shows that there is a linear relationship between a person having 
+```
+
+```{r}
+#Neural Net
+library(caret)
+library(neuralnet)
+normalize <- function(x) {
+   return ((x - min(x)) / (max(x) - min(x)))
+}
+train2<- train
+train2<-lapply(train2, normalize)
+train2<-data.frame(train2)
+
+test2<- test
+test2<-lapply(test2, normalize)
+test2<-data.frame(test2)
+
+nn1 <- neuralnet(MentalHealthDisorder ~  .-Gender,train2, hidden = 3)
+training.prediction1 <-neuralnet::compute(nn1, train2)
+trainProb1<- training.prediction1$net.result
+NNresults <- data.frame(actual = train2$MentalHealthDisorder, prediction = trainProb1)
+
+roundedresults<-sapply(NNresults,round,digits=0)
+roundedresultsdf<-data.frame(roundedresults)
+attach(roundedresultsdf)
+conmat <- confusionMatrix(table(actual,prediction)[,-3])
+conmat
+
+#We get an accuracy of 85.22% on the training dataset
+
+test.prediction1 <- neuralnet::compute(nn1, test2)
+testProb1<- test.prediction1$net.result
+NN.Testresults <- data.frame(actual = test2$MentalHealthDisorder, prediction = testProb1)
+
+roundedresults2<-sapply(NN.Testresults,round,digits=0)
+roundedresultsdf2<-data.frame(roundedresults2)
+attach(roundedresultsdf2)
+conmat2 <- confusionMatrix(table(actual,prediction)[,-3])
+conmat2 <- confusionMatrix(table(actual,prediction))
+conmat2
+table(factor(prediction, levels=min(test):max(test)), 
+      factor(actual, levels=min(test):max(test)))
+
+plot(nn1)
+plot(nn2)
+
+#We get an accuracy of 86.57% on the Test set
+```
+
+
+```{r}
+dfCopy<-filter(dfCopy,dfCopy$TechCompany == "Yes")
+df.MentalHealth <- dfCopy[,c("SelfEmployed","EmployeeCount","OptionsAvailable","PreviousEmployers","PreviousMentalHealthBenefits","DiscussionPE","NegativeImpactOfIssuesOnCareer","FamilyHistory","PersonalHistory","MentalHealthDisorder","InterferenceWithWorkEnv","Age","Gender")]
+
+str(df.MentalHealth)
+levels(df.MentalHealth$OptionsAvailable)
+levels(df.MentalHealth$OptionsAvailable)[2]<-"I don't know"
+levels(df.MentalHealth$PreviousMentalHealthBenefits)[1] <- "I don't know"
+levels(df.MentalHealth$DiscussionPE)[1] <- "I don't know"
+
+
+sample <- sample.split(df.MentalHealth, SplitRatio = 0.60)
+train <- subset(df.MentalHealth, sample == TRUE)
+test <- subset(df.MentalHealth, sample == FALSE)
+
+train.def<-train$MentalHealthDisorder
+test.def<-test$MentalHealthDisorder
+```
+
+```{r}
+#DecisionTree
+
+library(rpart)
+library(rpart.plot)
+
+DT_model1 <- rpart(MentalHealthDisorder ~ ., data = train, method = 'class' , cp= 0.005, maxdepth = 4)
+printcp(DT_model1)
+rpart.plot(DT_model1, type = 1, extra = 1, split.font = 1, varlen = -10)
+summary(DT_model1)
+
+DT_predTrain <-predict(DT_model1, train, type = 'class')
+DT_predTest <- predict(DT_model1, test, type = 'class')
+
+table(DT_predTrain, train.def)
+table(DT_predTest, test.def)
+
+misClassificErrorTrain <- mean(DT_predTrain != train.def)
+misClassificErrorTest <- mean(DT_predTest != test.def)
+
+print(paste('Accuracy of Training model = ', 1-misClassificErrorTrain))
+print(paste('Accuracy of Testing model = ', 1-misClassificErrorTest))
+
+```
+
+```{r}
+#RandomForest Incomplete
+library(randomForest)
+RF_model <- randomForest(MentalHealthDisorder ~ ., data = train, importance = TRUE , na.action=na.roughfix)
+getTree(RF_model)
+
+
+print(RF_model)
+RF_Predict <- predict(RF_model, train)
+
+```
+
+```{r}
+#Naive Bayes
+x <- train[,-10]
+y <- train$MentalHealthDisorder
+
+library(e1071)
+library(caret)
+
+NBModel <- naiveBayes(x , y , trControl=trainControl(method='cv',number=10))
+NBModel
+
+NBPredictTraining <- predict(NBModel, newdata = train)
+NBtrainTable=table(train$MentalHealthDisorder, NBPredictTraining)
+trainAcc=(NBtrainTable[1,1]+NBtrainTable[2,2])/sum(NBtrainTable)
+
+NBPredictTest <- predict(NBModel, newdata = test)
+NBtestTable=table(test$MentalHealthDisorder, NBPredictTest)
+testAcc=(NBtestTable[1,1]+NBtestTable[2,2])/sum(NBtestTable)
+print(paste('Training Accuracy =', trainAcc))
+print(paste('Testing Accuracy =', testAcc))
+
+```
+
+```{r}
+#Logistic Regression
+
+logisticModel <- glm( MentalHealthDisorder~ ., data = train ,family='binomial')
+summary(logisticModel)
+#Predict Output
+library(ROCR)
+LogisticPredictTrain= predict(logisticModel,train[,-10])
+predTrain <- ROCR::prediction(LogisticPredictTrain, train$MentalHealthDisorder) 
+prfTrain <- performance(predTrain, measure = "tpr", x.measure = "fpr")
+plot(prfTrain , main = "Training ROC curve")
+
+aucTrain <- performance(predTrain, measure = "auc")
+aucTrain <- aucTrain@y.values[[1]]
+aucTrain
+
+#AUC gives the performance = 82.46% in the train set
+
+LogisticPredict= predict(logisticModel,test[,-10])
+pred <- ROCR::prediction(LogisticPredict, test$MentalHealthDisorder) 
+prf <- performance(pred, measure = "tpr", x.measure = "fpr")
+plot(prf , main = "Test ROC curve")
+
+auc <- performance(pred, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+
+#AUC gives the performance = 75.52% in the test set
+```
+
+
+
+
+
+```{r}
+#SVM 
+
+library(e1071)
+SVMmodel<-svm(MentalHealthDisorder~. , data = train2 , type = 'C-classification', kernel = 'linear', cost=10, na.action=na.omit)
+summary(SVMmodel)
+SVMpredict = predict(SVMmodel,train2[,-3])
+
+#Confusion Matrix SVM
+SVMTable <- table(train2[,3],SVMpredict)
+SVMTable
+
+SVMaccuracy<-(SVMTable[1,1]+SVMTable[2,2])/(SVMTable[1,1]+SVMTable[1,2]+SVMTable[2,1]+SVMTable[2,2])
+print(SVMaccuracy)
+```
+
+
+plot(SVMmodel,train2, MentalHealthDisorder~Gender)
+ 
+
+
+# PLOT ROC-AUC Curve for SVM
+plot(pROC::roc(SVMpredict>.5, train[,10]),main="ROC Curve for SVM",plot=TRUE,print.auc=TRUE )
+
+
+```
+
+```{r}
+#LDA
+library(MASS)
+
+ldaModel <- lda(MentalHealthDisorder ~., data=train2)
+ldapredict <- predict(ldaModel,newdata = train2)
+head(ldapredict$class)
+head(ldapredict$posterior)
+head(ldapredict$x,3)
+
+prop.lda = ldaModel$svd^2/sum(ldaModel$svd^2)
+prop.lda
+dataset = data.frame(train2[,3], lda = ldapredict$x)
+
+p1 <- ggplot(dataset) + geom_point(aes(lda.LD1, lda.LD2), size = 2.5) + 
+  labs(x = paste("LD1 (", percent(prop.lda[1]), ")", sep=""),
+       y = paste("LD2 (", percent(prop.lda[2]), ")", sep=""))
+
+```
+
+```{r}
+prop.lda = ldaModel$svd^2/sum(ldaModel$svd^2)
+prop.lda
+dataset = data.frame(train2[,3], lda = ldapredict$x)
+
+p1 <- ggplot(dataset) + geom_point(aes(lda.LD1, lda.LD2), size = 2.5) + 
+  labs(x = paste("LD1 (", percent(prop.lda[1]), ")", sep=""),
+       y = paste("LD2 (", percent(prop.lda[2]), ")", sep=""))
+
+p1 <- ggplot(dataset) + geom_point(aes(ldapredict$x, ldaModel.LD2, colour = species, shape = species), size = 2.5)+ 
+  labs(x = "LD1",
+       y = "LD2")
+
+p1
+
+grid.arrange(p1, p2)
+
+
+ldapredict.posteriors <- as.data.frame(ldapredict$posterior)
+ldapred <- ROCR::prediction(ldapredict, train2$MentalHealthDisorder)
+roc.perf = performance(ldapred, measure = "tpr", x.measure = "fpr")
+auc <- performance(ldapred, measure = "auc")
+auc <- auc@y.values
+
+
+
+LogisticPredict= predict(logisticModel,test[,-10])
+pred <- prediction(LogisticPredict, test$MentalHealthDisorder) 
+prf <- performance(pred, measure = "tpr", x.measure = "fpr")
+plot(prf , main = "Test ROC curve")
+
+auc <- performance(pred, measure = "auc")
+auc <- auc@y.values[[1]]
+auc
+# Plot
+plot(roc.perf)
+abline(a=0, b= 1)
+text(x = .25, y = .65 ,paste("AUC = ", round(auc.train[[1]],3), sep = ""))
+```
+
+
